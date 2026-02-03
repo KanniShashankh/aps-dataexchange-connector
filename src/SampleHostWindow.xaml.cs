@@ -13,6 +13,7 @@ using Autodesk.DataExchange.Core.Interface;
 using Autodesk.DataExchange.Core.Models;
 using Autodesk.DataExchange.Interface;
 using Autodesk.DataExchange.UI.Core;
+using Autodesk.DataExchange.UI.Core.EventArgs;
 using Autodesk.DataExchange.UI.Core.Interfaces;
 using WindowStateEnum = Autodesk.DataExchange.UI.Core.Enums.WindowState;
 
@@ -147,6 +148,9 @@ namespace SampleConnector
                 }
             };
 
+            // Subscribe to MessageStateChanged to handle UI auto-hide/show after operations complete
+            bridge.MessageStateChanged += this.OnMessageStateChanged;
+
             // Initialize and launch the connector UI asynchronously
             _ = this.InitializeAndLaunchConnectorUi(bridge);
         }
@@ -192,6 +196,43 @@ namespace SampleConnector
             if (exchanges != null)
             {
                 this.customReadWriteModel.SetLocalExchanges(exchanges);
+            }
+        }
+
+        /// <summary>
+        /// Handles the MessageStateChanged event from the bridge.
+        /// Hides the UI window after CreateExchangeRequest or LoadExchangeRequest is processed,
+        /// then shows it again after 5 seconds.
+        /// </summary>
+        private void OnMessageStateChanged(object sender, MessageStateChangedEventArgs e)
+        {
+            // Hide window after CreateExchangeRequest or LoadExchangeRequest is processed.
+            if (e.State == MessageState.Processed &&
+                (e.Message.Contains("CreateExchangeRequest") || e.Message.Contains("LoadExchangeRequest")))
+            {
+                // Fire-and-forget: Hide UI after 2 seconds, then show again after 5 more seconds
+                _ = Task.Run(async () =>
+                {
+                    try
+                    {
+                        // Wait 2 seconds before hiding (so user sees the success notification)
+                        await Task.Delay(TimeSpan.FromSeconds(2));
+
+                        // Hide the UI
+                        this.customReadWriteModel.Bridge?.SetWindowState(WindowStateEnum.Hide);
+
+                        // Wait 5 seconds
+                        await Task.Delay(TimeSpan.FromSeconds(5));
+
+                        // Show the UI again
+                        this.customReadWriteModel.Bridge?.SetWindowState(WindowStateEnum.Show);
+                    }
+                    catch (Exception ex)
+                    {
+                        // Log error if available
+                        this.sdkOptions?.Logger?.Error(ex);
+                    }
+                });
             }
         }
     }
