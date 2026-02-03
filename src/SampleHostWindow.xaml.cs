@@ -13,6 +13,7 @@ using Autodesk.DataExchange.Core.Interface;
 using Autodesk.DataExchange.Core.Models;
 using Autodesk.DataExchange.Interface;
 using Autodesk.DataExchange.UI.Core;
+using Autodesk.DataExchange.UI.Core.Enums;
 using Autodesk.DataExchange.UI.Core.EventArgs;
 using Autodesk.DataExchange.UI.Core.Interfaces;
 using WindowStateEnum = Autodesk.DataExchange.UI.Core.Enums.WindowState;
