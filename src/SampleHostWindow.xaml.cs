@@ -202,38 +202,19 @@ namespace SampleConnector
 
         /// <summary>
         /// Handles the MessageStateChanged event from the bridge.
-        /// Hides the UI window after CreateExchangeRequest or LoadExchangeRequest is processed,
-        /// then shows it again after 5 seconds.
+        /// Closes the UI window after CreateExchangeRequest or LoadExchangeRequest response
+        /// has been sent to the UI. Using ResponseSent (instead of Processed) guarantees the
+        /// UI has received the response before the close command arrives, eliminating race
+        /// conditions with pending request checks.
         /// </summary>
         private void OnMessageStateChanged(object sender, MessageStateChangedEventArgs e)
         {
-            // Hide window after CreateExchangeRequest or LoadExchangeRequest is processed.
-            if (e.State == MessageState.Processed &&
+            if (e.State == MessageState.ResponseSent &&
                 (e.Message.Contains("CreateExchangeRequest") || e.Message.Contains("LoadExchangeRequest")))
             {
-                // Fire-and-forget: Hide UI after 2 seconds, then show again after 5 more seconds
-                _ = Task.Run(async () =>
-                {
-                    try
-                    {
-                        // Wait 2 seconds before hiding (so user sees the success notification)
-                        await Task.Delay(TimeSpan.FromSeconds(2));
-
-                        // Hide the UI
-                        this.customReadWriteModel.Bridge?.SetWindowState(WindowStateEnum.Hide);
-
-                        // Wait 5 seconds
-                        await Task.Delay(TimeSpan.FromSeconds(5));
-
-                        // Show the UI again
-                        this.customReadWriteModel.Bridge?.SetWindowState(WindowStateEnum.Show);
-                    }
-                    catch (Exception ex)
-                    {
-                        // Log error if available
-                        this.sdkOptions?.Logger?.Error(ex);
-                    }
-                });
+                // Safe to close — the UI has already received the operation response.
+                // WebSocket message ordering ensures the close command arrives after the response.
+                this.customReadWriteModel.Bridge?.SetWindowState(WindowStateEnum.Close);
             }
         }
     }
