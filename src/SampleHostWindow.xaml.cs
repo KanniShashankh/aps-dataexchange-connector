@@ -149,8 +149,8 @@ namespace SampleConnector
                 }
             };
 
-            // Subscribe to MessageStateChanged to handle UI auto-hide/show after operations complete
-            bridge.MessageStateChanged += this.OnMessageStateChanged;
+            // Subscribe to ExchangeOperationCompleted to handle UI auto-close after operations complete
+            bridge.ExchangeOperationCompleted += this.OnExchangeOperationCompleted;
 
             // Initialize and launch the connector UI asynchronously
             _ = this.InitializeAndLaunchConnectorUi(bridge);
@@ -201,19 +201,16 @@ namespace SampleConnector
         }
 
         /// <summary>
-        /// Handles the MessageStateChanged event from the bridge.
-        /// Closes the UI window after CreateExchangeRequest or LoadExchangeRequest response
-        /// has been sent to the UI. Using ResponseSent (instead of Processed) guarantees the
-        /// UI has received the response before the close command arrives, eliminating race
-        /// conditions with pending request checks.
+        /// Handles the ExchangeOperationCompleted event from the bridge.
+        /// Closes the UI window after a Create or Load exchange operation has fully completed.
+        /// At this point, the SDK has finished processing and the response has been delivered
+        /// to the UI, so it is safe to send the close command.
         /// </summary>
-        private void OnMessageStateChanged(object sender, MessageStateChangedEventArgs e)
+        private void OnExchangeOperationCompleted(object sender, ExchangeOperationCompletedEventArgs e)
         {
-            if (e.State == MessageState.ResponseSent &&
-                (e.Message.Contains("CreateExchangeRequest") || e.Message.Contains("LoadExchangeRequest")))
+            if (e.Succeeded && (e.OperationType == ExchangeOperationType.Create
+                             || e.OperationType == ExchangeOperationType.Load))
             {
-                // Safe to close — the UI has already received the operation response.
-                // WebSocket message ordering ensures the close command arrives after the response.
                 this.customReadWriteModel.Bridge?.SetWindowState(WindowStateEnum.Close);
             }
         }
